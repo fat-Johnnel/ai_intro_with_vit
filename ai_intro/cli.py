@@ -20,6 +20,8 @@ def main(argv: List[str] | None = None) -> int:
     sp.add_argument("--seed", type=int, default=42)
     sp.add_argument("--dedupe", action="store_true")
     sp.add_argument("--max-samples", type=int, default=None)
+    sp.add_argument("--img-size", type=int, default=224, help="If set, pad to square and resize to this size")
+    sp.add_argument("--pad-color", default="0,0,0", help="RGB pad color, e.g. '0,0,0' for black")
 
     # train
     sp = sub.add_parser("train", help="训练分类模型")
@@ -70,6 +72,8 @@ def main(argv: List[str] | None = None) -> int:
             seed=int(args.seed),
             dedupe=bool(args.dedupe),
             max_samples=args.max_samples,
+            img_size=int(args.img_size) if args.img_size is not None else None,
+            pad_color=tuple(int(x) for x in str(args.pad_color).split(",")),
         )
         print("Prepared dataset:")
         for k, v in stats.items():

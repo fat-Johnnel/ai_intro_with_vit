@@ -5,7 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
-
+pre_image/
 # Virtual environments
 .venv
 
@@ -15,4 +15,3 @@ data
 
 wandb
 
-artifacts

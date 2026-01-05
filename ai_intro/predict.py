@@ -6,6 +6,7 @@ from typing import List, Tuple, cast
 import torch
 
 from .modeling import create_resnet_classifier
+from .modeling import create_vit_classifier
 from .utils import Checkpoint
 
 
@@ -54,12 +55,21 @@ def predict_image(
     if has_plain_head and dropout > 0:
         dropout = 0.0
 
-    model = create_resnet_classifier(
-        backbone=backbone,
-        num_classes=len(class_names),
-        pretrained=False,
-        dropout=dropout,
-    )
+    # Rebuild model according to saved backbone. Support ViT (timm) and ResNet.
+    if "vit" in backbone.lower():
+        model = create_vit_classifier(
+            backbone=backbone,
+            num_classes=len(class_names),
+            pretrained=False,
+            dropout=dropout,
+        )
+    else:
+        model = create_resnet_classifier(
+            backbone=backbone,
+            num_classes=len(class_names),
+            pretrained=False,
+            dropout=dropout,
+        )
     model.load_state_dict(state_dict)
     model.to(device)
     model.eval()

@@ -11,7 +11,7 @@ import torch.nn as nn
 
 from .data import DataConfig, build_dataloaders
 from .metrics import binary_classification_metrics, confusion_matrix_binary
-from .modeling import create_resnet_classifier, infer_normalization
+from .modeling import create_resnet_classifier, create_vit_classifier, infer_normalization
 from .utils import Checkpoint, ensure_dir, get_device, set_seed
 
 
@@ -153,11 +153,21 @@ def train(cfg: TrainConfig) -> Path:
         config=data_cfg, mean=mean, std=std, pin_memory=(device.type == "cuda")
     )
 
-    model = create_resnet_classifier(
-        backbone=cfg.backbone,
-        num_classes=len(class_names),
-        dropout=cfg.dropout,
-    ).to(device)
+    # Support both ResNet and ViT backbones. Use timm for ViT if backbone name contains 'vit'.
+    bk = cfg.backbone.lower().strip()
+    if "vit" in bk:
+        model = create_vit_classifier(
+            backbone=cfg.backbone,
+            num_classes=len(class_names),
+            pretrained=True,
+            dropout=cfg.dropout,
+        ).to(device)
+    else:
+        model = create_resnet_classifier(
+            backbone=cfg.backbone,
+            num_classes=len(class_names),
+            dropout=cfg.dropout,
+        ).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(

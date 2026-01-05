@@ -77,12 +77,51 @@ def _copy_to_split(
     files: List[Path],
     out_dir: Path,
     split: str,
+    img_size: int | None = None,
+    pad_color: Tuple[int, int, int] = (0, 0, 0),
 ) -> None:
     for src in files:
         label = _label_from_path(src)
         dst_dir = out_dir / split / label
         dst_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst_dir / src.name)
+        dst = dst_dir / src.name
+        if img_size is None:
+            shutil.copy2(src, dst)
+        else:
+            _process_and_save(src=src, dst=dst, img_size=img_size, pad_color=pad_color)
+
+
+def _process_and_save(
+    *,
+    src: Path,
+    dst: Path,
+    img_size: int | None = None,
+    pad_color: Tuple[int, int, int] = (0, 0, 0),
+) -> None:
+    """Open image, pad to square with pad_color if needed, resize to img_size, and save to dst."""
+    try:
+        with Image.open(src) as im:
+            im = im.convert("RGB")
+            w, h = im.size
+            if w != h:
+                m = max(w, h)
+                # create square canvas and paste centered
+                canvas = Image.new("RGB", (m, m), pad_color)
+                paste_x = (m - w) // 2
+                paste_y = (m - h) // 2
+                canvas.paste(im, (paste_x, paste_y))
+                im = canvas
+
+            if img_size is not None:
+                im = im.resize((img_size, img_size), resample=Image.BILINEAR)
+
+            im.save(dst)
+    except Exception:
+        # If processing fails, skip copying and do a direct copy as fallback
+        try:
+            shutil.copy2(src, dst)
+        except Exception:
+            pass
 
 
 def prepare_kaggle_dogs_vs_cats(
@@ -94,6 +133,8 @@ def prepare_kaggle_dogs_vs_cats(
     seed: int = 42,
     dedupe: bool = False,
     max_samples: int | None = None,
+    img_size: int | None = None,
+    pad_color: Tuple[int, int, int] = (0, 0, 0),
 ) -> Dict[str, int]:
     """Prepare folder structure suitable for ImageFolder.
 
@@ -141,9 +182,9 @@ def prepare_kaggle_dogs_vs_cats(
     val_files = ok_files[n_test : n_test + n_val]
     train_files = ok_files[n_test + n_val :]
 
-    _copy_to_split(files=train_files, out_dir=out_dir, split="train")
-    _copy_to_split(files=val_files, out_dir=out_dir, split="val")
-    _copy_to_split(files=test_files, out_dir=out_dir, split="test")
+    _copy_to_split(files=train_files, out_dir=out_dir, split="train", img_size=img_size, pad_color=pad_color)
+    _copy_to_split(files=val_files, out_dir=out_dir, split="val", img_size=img_size, pad_color=pad_color)
+    _copy_to_split(files=test_files, out_dir=out_dir, split="test", img_size=img_size, pad_color=pad_color)
 
     return {
         "total": n,

@@ -64,3 +64,34 @@ def infer_normalization() -> Tuple[Tuple[float, float, float], Tuple[float, floa
     mean = (0.485, 0.456, 0.406)
     std = (0.229, 0.224, 0.225)
     return mean, std
+
+
+def create_vit_classifier(
+    *,
+    backbone: str = "vit_base_patch16_224",
+    num_classes: int = 2,
+    pretrained: bool = True,
+    dropout: float = 0.0,
+) -> nn.Module:
+    """Create a Vision Transformer classifier using timm.
+
+    Example backbones: vit_base_patch16_224, vit_large_patch16_384
+    """
+    try:
+        import timm
+    except Exception as e:  # pragma: no cover
+        raise RuntimeError("timm is required. Install it via `pip install timm`.") from e
+
+    # timm handles position embedding interpolation internally for common backbones.
+    model = timm.create_model(str(backbone), pretrained=bool(pretrained), num_classes=int(num_classes))
+
+    # Some timm models accept drop_rate / drop_path_rate on creation; we keep interface simple.
+    if dropout and float(dropout) > 0:
+        # Try setting a dropout attribute if available
+        try:
+            if hasattr(model, "drop_rate"):
+                setattr(model, "drop_rate", float(dropout))
+        except Exception:
+            pass
+
+    return model
